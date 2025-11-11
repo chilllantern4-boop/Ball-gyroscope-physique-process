@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Gravity Balls — Gyro Physics Sandbox</title>
+<style>
+  :root{
+    --bg:#05050a;
+    --panel:#07070b;
+    --neon-1: #00f0ff;
+    --neon-2: #ff3fd1;
+    --neon-3: #8aff7a;
+  }
+  html,body{height:100%;margin:0;font-family:sans-serif;background:radial-gradient(circle at 20% 20%, #081021 0%, var(--bg) 40%, #000 100%);color:white;}
+  body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;overflow:hidden;}
+  canvas{width:95vw;height:60vh;border-radius:12px;background:#000;touch-action:none;}
+  .btn{padding:10px 16px;border:none;border-radius:8px;background:#0ff2;color:#21679C;font-weight:bold;cursor:pointer;}
+  .btn:active{opacity:0.7;}
+</style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div>
+    <button id="addBall" class="btn">Add Ball</button>
+    <button id="clear" class="btn">Clear</button>
+    <button id="toggleGyro" class="btn">Enable Gyroscope</button>
+  </div>
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let DPR = window.devicePixelRatio || 1;
+
+function resize() {
+  canvas.width = canvas.clientWidth * DPR;
+  canvas.height = canvas.clientHeight * DPR;
+  ctx.scale(DPR, DPR);
+}
+resize();
+window.addEventListener('resize', resize);
+
+const balls = [];
+let gravity = { x: 0, y: 0.5 }; // default gravity
+
+class Ball {
+  constructor(x, y, r, color) {
+    this.x = x;
+    this.y = y;
+    this.r = r;
+    this.vx = 0;
+    this.vy = 0;
+    this.color = color;
+  }
+  update() {
+    this.vx += gravity.x;
+    this.vy += gravity.y;
+    this.vx *= 0.99;
+    this.vy *= 0.99;
+    this.x += this.vx;
+    this.y += this.vy;
+    if (this.x - this.r < 0) { this.x = this.r; this.vx *= -0.8; }
+    if (this.x + this.r > canvas.clientWidth) { this.x = canvas.clientWidth - this.r; this.vx *= -0.8; }
+    if (this.y - this.r < 0) { this.y = this.r; this.vy *= -0.8; }
+    if (this.y + this.r > canvas.clientHeight) { this.y = canvas.clientHeight - this.r; this.vy *= -0.8; }
+  }
+  draw() {
+    const g = ctx.createRadialGradient(this.x, this.y, this.r*0.3, this.x, this.y, this.r);
+    g.addColorStop(0, "#fff");
+    g.addColorStop(1, this.color);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI*2);
+    ctx.fill();
+  }
+}
+
+function spawnBall() {
+  const r = Math.random()*15+10;
+  const x = Math.random()*(canvas.clientWidth-2*r)+r;
+  const y = Math.random()*(canvas.clientHeight-2*r)+r;
+  const color = ['#00f0ff','#ff3fd1','#8aff7a'][Math.floor(Math.random()*3)];
+  balls.push(new Ball(x, y, r, color));
+}
+
+function loop() {
+  ctx.fillStyle = "rgba(0,0,0,0.3)";
+  ctx.fillRect(0,0,canvas.clientWidth,canvas.clientHeight);
+  balls.forEach(b=>{b.update(); b.draw();});
+  requestAnimationFrame(loop);
+}
+loop();
+
+document.getElementById('addBall').onclick = ()=>{for(let i=0;i<5;i++)spawnBall();};
+document.getElementById('clear').onclick = ()=>{balls.length=0;};
+
+// ---- Gyroscope ----
+let gyroEnabled = false;
+const toggleBtn = document.getElementById('toggleGyro');
+toggleBtn.onclick = async ()=>{
+  if(!gyroEnabled){
+    if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
+      try {
+        const res = await DeviceOrientationEvent.requestPermission();
+        if(res === "granted"){
+          window.addEventListener("deviceorientation", handleOrientation);
+          toggleBtn.textContent = "Disable Gyroscope";
+          gyroEnabled = true;
+        }
+      } catch(e){ alert("Permission denied"); }
+    } else {
+      window.addEventListener("deviceorientation", handleOrientation);
+      toggleBtn.textContent = "Disable Gyroscope";
+      gyroEnabled = true;
+    }
+  } else {
+    window.removeEventListener("deviceorientation", handleOrientation);
+    toggleBtn.textContent = "Enable Gyroscope";
+    gyroEnabled = false;
+  }
+};
+
+function handleOrientation(e){
+  // e.beta = front-back tilt, e.gamma = left-right tilt
+  const x = clamp(e.gamma / 45, -1, 1);
+  const y = clamp(e.beta / 45, -1, 1);
+  gravity.x = x;
+  gravity.y = y;
+}
+
+function clamp(v,a,b){ return Math.max(a, Math.min(b,v)); }
+
+// start with some balls
+for(let i=0;i<10;i++) spawnBall();
+</script>
+</body>
+</html>
