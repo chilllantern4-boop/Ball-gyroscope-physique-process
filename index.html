@@ -1,39 +1,99 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>🔥 Hottest Universe Physics — Gyro Sandbox</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hottest Thing in the Universe — Tilt Control</title>
 <style>
-  :root{
-    --bg:#05050a;
-    --neon1:#ff6600;
-    --neon2:#ffcc00;
+  html,body{margin:0;padding:0;overflow:hidden;height:100%;background:black;}
+  canvas{display:block;width:100vw;height:100vh;}
+  #startBtn{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    background:linear-gradient(45deg,#ff6600,#ff2200);
+    border:none;padding:15px 30px;border-radius:10px;
+    font-size:18px;color:white;cursor:pointer;box-shadow:0 0 20px #ff6600;
   }
-  html,body{
-    height:100%;margin:0;
-    font-family:sans-serif;
-    background:radial-gradient(circle at 20% 20%, #110000 0%, var(--bg) 60%, #000 100%);
-    color:white;
-    overflow:hidden;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
+  #log{position:absolute;bottom:10px;left:10px;color:white;font-size:12px;}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<button id="startBtn">Start Game</button>
+<div id="log"></div>
+
+<script>
+const canvas=document.getElementById('game');
+const ctx=canvas.getContext('2d');
+canvas.width=window.innerWidth;
+canvas.height=window.innerHeight;
+
+let ball={x:canvas.width/2,y:canvas.height/2,r:35,vx:0,vy:0};
+let ax=0,ay=0,started=false,friction=0.985;
+const logEl=document.getElementById('log');
+
+function drawBall(){
+  const g=ctx.createRadialGradient(ball.x,ball.y,10,ball.x,ball.y,90);
+  g.addColorStop(0,'#ffffaa');
+  g.addColorStop(0.3,'#ff6600');
+  g.addColorStop(1,'#000000');
+  ctx.beginPath();
+  ctx.fillStyle=g;
+  ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);
+  ctx.fill();
+}
+
+function updateBall(){
+  ball.vx+=ax;
+  ball.vy+=ay;
+  ball.vx*=friction;
+  ball.vy*=friction;
+  ball.x+=ball.vx;
+  ball.y+=ball.vy;
+
+  if(ball.x-ball.r<0){ball.x=ball.r;ball.vx*=-0.8;}
+  if(ball.x+ball.r>canvas.width){ball.x=canvas.width-ball.r;ball.vx*=-0.8;}
+  if(ball.y-ball.r<0){ball.y=ball.r;ball.vy*=-0.8;}
+  if(ball.y+ball.r>canvas.height){ball.y=canvas.height-ball.r;ball.vy*=-0.8;}
+}
+
+function loop(){
+  if(!started)return;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  updateBall();
+  drawBall();
+  requestAnimationFrame(loop);
+}
+
+document.getElementById('startBtn').addEventListener('click',async()=>{
+  if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function'){
+    try{
+      const res=await DeviceOrientationEvent.requestPermission();
+      if(res==='granted'){
+        window.addEventListener('deviceorientation',handleTilt);
+        start();
+      }else alert('Please allow motion permission to play.');
+    }catch(e){alert('Error: '+e);}
+  }else{
+    window.addEventListener('deviceorientation',handleTilt);
+    start();
   }
-  canvas{
-    width:95vw;
-    height:60vh;
-    border-radius:12px;
-    background:#000;
-    box-shadow:0 0 30px #ff660055;
-    touch-action:none;
-  }
-  .btn{
-    padding:10px 16px;
-    border:none;
-    border-radius:8px;
-    background:linear-gradient(90deg,var(--neon1),var(--neon2));
+});
+
+function handleTilt(e){
+  // Tilt values: left/right (gamma), forward/back (beta)
+  ax=e.gamma/40; // smaller divisor → more sensitive
+  ay=e.beta/40;
+  logEl.textContent=`Gamma: ${e.gamma.toFixed(1)}, Beta: ${e.beta.toFixed(1)}, ax: ${ax.toFixed(2)}, ay: ${ay.toFixed(2)}`;
+}
+
+function start(){
+  started=true;
+  document.getElementById('startBtn').style.display='none';
+  loop();
+}
+</script>
+</body>
+</html>
     color:#000;
     font-weight:bold;
     cursor:pointer;
